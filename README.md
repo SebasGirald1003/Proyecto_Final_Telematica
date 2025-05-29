@@ -4,6 +4,10 @@
 
 https://github.com/SebasGirald1003/Proyecto_Final_Telematica/wiki/Evidencias-Fotos
 
+## Video
+
+link: 
+
 ## Introducción
 
 En el marco del curso de redes, se nos planteó el diseño e implementación de un servidor DNS funcional utilizando el servicio BIND en un entorno virtualizado. Para este proyecto seleccionamos Amazon Web Services (AWS) como plataforma de despliegue, lo que nos permitió simular un entorno realista de nube y prácticas empresariales.
