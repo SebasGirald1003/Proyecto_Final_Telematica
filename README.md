@@ -1,12 +1,17 @@
 # Proyecto Final – Diseño e Implementación de un Servidor DNS con BIND en AWS
 
+## Integrantes:
+
+  - Santiago Álvarez Peña.
+  - Sebastián Giraldo Álvarez.
+
 ## Capturas
 
 https://github.com/SebasGirald1003/Proyecto_Final_Telematica/wiki/Evidencias-Fotos
 
 ## Video
 
-link: 
+link: https://youtu.be/Zh_8MFPQPZU
 
 ## Introducción
 
