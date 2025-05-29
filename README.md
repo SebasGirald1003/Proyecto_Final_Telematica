@@ -71,6 +71,19 @@ Realizamos consultas directas e inversas con la herramienta `dig`:
 
 Ambas respuestas fueron exitosas.
 
+### Consideración de seguridad: Ventajas del modo chroot en BIND
+
+El uso del **modo chroot (modo jaula)** en el servicio BIND presenta las siguientes ventajas:
+
+- **Mayor seguridad**: Aísla el servicio DNS en un entorno limitado del sistema de archivos, reduciendo el riesgo de que un atacante acceda a otros archivos del sistema si compromete el servicio.
+
+- **Aislamiento del proceso**: BIND solo puede interactuar con los archivos dentro de su jaula, minimizando el impacto de errores o configuraciones maliciosas.
+
+- **Entorno controlado**: Solo se incluyen los archivos necesarios, lo que reduce la superficie de ataque.
+
+- **Facilita la auditoría**: Permite una mejor trazabilidad del comportamiento del servicio DNS.
+
+
 ## Problemas encontrados y solucionados
 
 Durante la verificación del archivo de zona directa, recibimos el siguiente error:
