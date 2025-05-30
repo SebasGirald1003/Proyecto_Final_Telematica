@@ -17,7 +17,7 @@ link: https://youtu.be/Zh_8MFPQPZU
 
 ### Introducción
 
-En el marco del curso de redes, se nos planteó el diseño e implementación de un servidor DNS funcional utilizando el servicio BIND9 en un entorno virtualizado. Para este proyecto seleccionamos Amazon Web Services (AWS) como plataforma de despliegue, lo que nos permitió simular un entorno realista de nube y prácticas empresariales.
+En el marco del curso de telemática, se nos planteó el diseño e implementación de un servidor DNS funcional utilizando el servicio BIND9 en un entorno virtualizado. Para este proyecto seleccionamos Amazon Web Services (AWS) como plataforma de despliegue, lo que nos permitió simular un entorno realista de nube y prácticas empresariales.
 
 El objetivo principal fue comprender el funcionamiento interno de la resolución de nombres mediante DNS, configurando el servidor para resolver tanto dominios internos personalizados como externos, mediante el uso de reenviadores (forwarders). Asimismo, se configuró un cliente Ubuntu que consume el servicio DNS desde la misma VPC.
 
