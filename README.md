@@ -13,121 +13,138 @@ https://github.com/SebasGirald1003/Proyecto_Final_Telematica/wiki/Evidencias-Fot
 
 link: https://youtu.be/Zh_8MFPQPZU
 
-## Introducción
+## Implementación de un Servidor DNS con BIND9 y Cliente en Ubuntu
 
-En el marco del curso de redes, se nos planteó el diseño e implementación de un servidor DNS funcional utilizando el servicio BIND en un entorno virtualizado. Para este proyecto seleccionamos Amazon Web Services (AWS) como plataforma de despliegue, lo que nos permitió simular un entorno realista de nube y prácticas empresariales.
+### Introducción
 
-El objetivo principal fue comprender el funcionamiento interno de la resolución de nombres mediante DNS, aplicando una configuración personalizada con archivos de zona directa e inversa, asegurando su correcto funcionamiento a través de pruebas de consulta DNS.
+En el marco del curso de redes, se nos planteó el diseño e implementación de un servidor DNS funcional utilizando el servicio BIND9 en un entorno virtualizado. Para este proyecto seleccionamos Amazon Web Services (AWS) como plataforma de despliegue, lo que nos permitió simular un entorno realista de nube y prácticas empresariales.
 
-## Desarrollo
+El objetivo principal fue comprender el funcionamiento interno de la resolución de nombres mediante DNS, configurando el servidor para resolver tanto dominios internos personalizados como externos, mediante el uso de reenviadores (forwarders). Asimismo, se configuró un cliente Ubuntu que consume el servicio DNS desde la misma VPC.
 
-La solución se desarrolló en una instancia EC2 de AWS, corriendo Ubuntu Server 22.04. El proceso se dividió en los siguientes pasos:
+### Desarrollo
 
-### Entorno de trabajo
+La solución se desarrolló en una instancia EC2 de AWS con Ubuntu Server 22.04. El proceso incluyó los siguientes pasos:
 
-- Se creó una instancia EC2 con Ubuntu.
-- Se configuró una VPC con subred pública.
-- Se habilitaron los puertos 22 (SSH) y 53 (TCP/UDP) en el grupo de seguridad.
-- Se asignó una IP pública para acceso remoto y una IP privada para pruebas internas.
+#### Entorno de trabajo
 
-### Instalación de BIND
+* Se creó una instancia EC2 con Ubuntu Server.
+* Se configuró una VPC con subred pública.
+* Se habilitaron los puertos 22 (SSH) y 53 (TCP/UDP) en el grupo de seguridad.
+* Se asignó una IP pública para acceso remoto y una IP privada para pruebas internas entre cliente y servidor.
 
-Accedimos por SSH y ejecutamos los siguientes comandos:
+#### Instalación de BIND9 en el servidor
 
+```bash
 sudo apt update
 sudo apt install bind9 bind9utils bind9-doc dnsutils -y
+```
 
+#### Configuración del archivo `/etc/bind/named.conf.options`
 
-Esto instaló el servicio DNS y sus herramientas asociadas.
+Se modificó para permitir recursión y redirección de consultas a DNS externos:
 
-### Configuración del servidor DNS
+```conf
+options {
+    directory "/var/cache/bind";
 
-Editamos el archivo `named.conf.local` para registrar nuestras zonas:
+    recursion yes;
+    allow-recursion { 127.0.0.1; 172.31.0.0/16; };
+    allow-query { any; };
 
-zone "grupox.local" {
-type master;
-file "/etc/bind/zones/db.grupox.local";
+    forwarders {
+        8.8.8.8;
+        8.8.4.4;
+        1.1.1.1;
+    };
+
+    dnssec-validation auto;
+    listen-on-v6 { any; };
 };
+```
 
-zone "1.168.192.in-addr.arpa" {
-type master;
-file "/etc/bind/zones/db.192.168.1";
-};
+Se verificó la sintaxis y se reinició el servicio:
 
-
-Luego creamos los archivos:
-
-- Zona directa (`db.grupox.local`): Incluye registros SOA, NS y A.
-- Zona inversa (`db.192.168.1`): Incluye registros PTR y SOA.
-
-También se aplicaron los permisos adecuados y se verificó la sintaxis con los siguientes comandos:
-
+```bash
 sudo named-checkconf
-sudo named-checkzone grupox.local /etc/bind/zones/db.grupox.local
-sudo named-checkzone 1.168.192.in-addr.arpa /etc/bind/zones/db.192.168.1
+sudo systemctl restart bind9
+```
 
+#### Configuración del cliente
 
-### Activación del servicio
+En la máquina cliente Ubuntu se modificó el archivo `/etc/resolv.conf` para que usara exclusivamente al servidor DNS configurado:
 
-Se habilitó y reinició el servicio con los siguientes comandos:
+```bash
+sudo rm /etc/resolv.conf
+sudo nano /etc/resolv.conf
+```
 
-sudo systemctl enable named
-sudo systemctl restart named
+Contenido:
 
+```
+nameserver 172.31.88.182
+options edns0 trust-ad
+search .
+```
 
-### Validación
+Para evitar que el sistema lo sobreescriba:
 
-Realizamos consultas directas e inversas con la herramienta `dig`:
+```bash
+sudo chattr +i /etc/resolv.conf
+```
 
-- `dig @127.0.0.1 host1.grupox.local` → 192.168.1.11
-- `dig @127.0.0.1 -x 192.168.1.11` → host1.grupox.local
+Adicionalmente se configuró correctamente el archivo `/etc/hosts`:
 
-Ambas respuestas fueron exitosas.
+```
+127.0.0.1 localhost
+127.0.1.1 ip-172-31-83-68
+```
 
-### Consideración de seguridad: Ventajas del modo chroot en BIND
+#### Pruebas de funcionamiento
 
-El uso del **modo chroot (modo jaula)** en el servicio BIND presenta las siguientes ventajas:
+Desde el cliente se realizaron consultas exitosas:
 
-- **Mayor seguridad**: Aísla el servicio DNS en un entorno limitado del sistema de archivos, reduciendo el riesgo de que un atacante acceda a otros archivos del sistema si compromete el servicio.
+```bash
+dig google.com
+dig host1.grupox.local
+dig @172.31.88.182 google.com
+dig @172.31.88.182 host1.grupox.local
+```
 
-- **Aislamiento del proceso**: BIND solo puede interactuar con los archivos dentro de su jaula, minimizando el impacto de errores o configuraciones maliciosas.
+### ¿Cómo el servidor DNS direcciona a cualquier dirección de Internet?
 
-- **Entorno controlado**: Solo se incluyen los archivos necesarios, lo que reduce la superficie de ataque.
+Cuando el cliente necesita acceder a un dominio como google.com, consulta al servidor DNS configurado. Este proceso ocurre de la siguiente manera:
 
-- **Facilita la auditoría**: Permite una mejor trazabilidad del comportamiento del servicio DNS.
+1. El cliente envía la consulta al servidor DNS.
+2. BIND9 revisa si el dominio está en sus zonas internas.
+3. Si no lo encuentra, utiliza los forwarders configurados:
 
+```conf
+forwarders {
+    8.8.8.8;
+    8.8.4.4;
+    1.1.1.1;
+};
+```
 
-## Problemas encontrados y solucionados
+4. El servidor forwarder responde con la IP correspondiente.
+5. El servidor DNS guarda la respuesta en caché y se la devuelve al cliente.
 
-Durante la verificación del archivo de zona directa, recibimos el siguiente error:
+Este mecanismo permite que el servidor resuelva nombres tanto internos como externos.
 
-dns_rdata_frontext: /etc/bind/zones/db.grupox.local:2: near '20250552801': out of range
+### Aspectos logrados y no logrados
 
+| Aspecto                               | Estado     | Detalles                                          |
+| ------------------------------------- | ---------- | ------------------------------------------------- |
+| Resolución de nombres internos        | Logrado    | Se configuró correctamente una zona personalizada |
+| Redirección a internet vía forwarders | Logrado    | El cliente resolvió dominios como google.com      |
+| Seguridad adicional (chroot)          | No logrado | No se configuró por falta de tiempo               |
+| Alta disponibilidad                   | No logrado | Solo se configuró un servidor primario            |
 
-Este error se debía a que el número de serie (Serial) en el registro SOA superaba el máximo permitido por el estándar DNS (4294967295). Inicialmente habíamos usado `20250552801`, pero este número tiene 11 dígitos.
+### Conclusiones
 
-La solución fue corregir el serial a un valor de 10 dígitos dentro del rango permitido, como `2025052801`.
+Este proyecto permitió comprender cómo funciona un servidor DNS autoritativo con capacidad recursiva. Se logró configurar satisfactoriamente tanto la resolución de dominios internos como la redirección a servidores externos mediante forwarders. Además, se desarrolló experiencia en el manejo de infraestructura en la nube usando AWS.
 
-Este problema fue importante porque impedía que el servidor cargara correctamente la zona.
+El conocimiento adquirido permite implementar soluciones DNS corporativas básicas, y resalta la importancia de la correcta configuración y validación en servicios críticos de red como DNS.
 
-## Logros
-
-- Instalación y configuración completa de BIND9.
-- Definición y activación de zonas directa e inversa.
-- Validación exitosa con herramientas como `dig`.
-- Documentación clara del proceso.
-- Simulación de un entorno DNS interno empresarial.
-
-## Aspectos no logrados
-
-- No se implementó chroot por falta de tiempo, pero se investigaron sus ventajas: mejora la seguridad al aislar el servicio BIND del resto del sistema de archivos.
-
-## Conclusiones
-
-Este proyecto permitió entender en la práctica cómo opera un servidor DNS autoritativo y cómo se configuran manualmente sus zonas. Además, nos dio experiencia en el manejo de infraestructura en la nube mediante AWS, fortaleciendo habilidades técnicas en redes, seguridad y despliegue de servicios.
-
-La resolución del problema con el número de serie nos mostró la importancia de los estándares en la configuración de servicios DNS.
-
-Gracias a las pruebas realizadas, confirmamos que el servidor funciona correctamente y cumple con los objetivos planteados.
 
 
