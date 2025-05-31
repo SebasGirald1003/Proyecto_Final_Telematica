@@ -11,7 +11,7 @@ https://github.com/SebasGirald1003/Proyecto_Final_Telematica/wiki/Evidencias-Fot
 
 ## Video
 
-link: https://youtu.be/Zh_8MFPQPZU
+link: https://youtu.be/RNvWftTAIxo
 
 ## Implementación de un Servidor DNS con BIND9 y Cliente en Ubuntu
 
